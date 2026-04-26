@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "testResult": {
+      "title": "TestResult",
+      "description": "Output of an RF test script (Ping, FTP, Voice)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "type": { "type": "string" },
+        "status": { "type": "string", "enum": ["Success", "Fail", "Timeout"] },
+        "throughputMbps": { "type": "number" },
+        "latencyMs": { "type": "number" },
+        "packetLoss": { "type": "number" },
+        "rsrp": { "type": "number" },
+        "sinr": { "type": "number" },
+        "pci": { "type": "number" },
+        "band": { "type": "string" }
+      },
+      "required": ["id", "timestamp", "type", "status"]
+    },
+    "siteReport": {
+      "title": "SiteReport",
+      "description": "Aggregate analysis for an entire site drive test or stationary test run.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "siteMode": { "type": "string", "enum": ["stationary", "mobility"] },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "siteMode", "createdAt"]
+    },
+    "license": {
+      "title": "License",
+      "description": "App license bound to device ID",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "deviceId": { "type": "string" },
+        "expiry": { "type": "number" },
+        "issuedAt": { "type": "number" },
+        "issuer": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "revoked"] },
+        "userEmail": { "type": "string" }
+      },
+      "required": ["key", "deviceId", "expiry", "status"]
+    },
+    "userStatus": {
+      "title": "User Status",
+      "description": "Global user permissions and tracking",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "isDisabled": { "type": "boolean" },
+        "isAdmin": { "type": "boolean" },
+        "lastSeen": { "type": "number" }
+      },
+      "required": ["uid", "email", "isDisabled"]
+    }
+  },
+  "firestore": {
+    "/licenses/{licenseKey}": {
+      "schema": "license",
+      "description": "Issued licenses"
+    },
+    "/users/{userId}": {
+      "schema": "userStatus",
+      "description": "User permission records"
+    },
+    "/reports/{reportId}": {
+      "schema": "siteReport",
+      "description": "High level report aggregations"
+    },
+    "/reports/{reportId}/results/{resultId}": {
+      "schema": "testResult",
+      "description": "The specific RF tests bounded to this run."
+    }
+  }
+}

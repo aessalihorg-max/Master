@@ -1,0 +1,5 @@
+{
+  "name": "RF Drive Test Pro",
+  "description": "Mobile-first web application for RF Drive testing, optimized for high-end devices like Huawei Mate 40 Pro. Features real-time NR/LTE parameters, Excel report export, and configurable test plans.",
+  "requestFramePermissions": ["geolocation"]
+}

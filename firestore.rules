@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    
+    function isSignedIn() { return request.auth != null; }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidSiteReport(data) {
+      return data.keys().hasAll(['id', 'siteMode', 'createdAt'])
+        && data.keys().size() <= 4
+        && data.id is string && data.id.size() <= 128
+        && data.siteMode is string && data.siteMode in ['stationary', 'mobility']
+        && data.createdAt is number;
+    }
+
+    function isValidTestResult(data) {
+      return data.keys().hasAll(['id', 'timestamp', 'type', 'status'])
+        && data.id is string && data.id.size() <= 128
+        && data.timestamp is string && data.timestamp.size() <= 64
+        && data.type is string && data.type.size() <= 100
+        && data.status is string && data.status in ['Success', 'Fail', 'Timeout']
+        && (!('syncTime' in data) || data.syncTime == request.time)
+        && (!('throughputMbps' in data) || data.throughputMbps is number)
+        && (!('latencyMs' in data) || data.latencyMs is number)
+        && (!('packetLoss' in data) || data.packetLoss is number)
+        && (!('rsrp' in data) || data.rsrp is number)
+        && (!('sinr' in data) || data.sinr is number)
+        && (!('pci' in data) || data.pci is number)
+        && (!('band' in data) || (data.band is string && data.band.size() <= 20));
+    }
+
+    function isAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == 'a.essalih.org@gmail.com' || 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+      ); 
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /licenses/{licenseKey} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin();
+    }
+
+    match /reports/{reportId} {
+      // NOTE: allowing any signed in user to access reports for now. Modify when users auth
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() 
+        && isValidId(reportId)
+        && isValidSiteReport(incoming())
+        && incoming().id == reportId;
+      
+      allow update: if isSignedIn()
+        && isValidSiteReport(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['siteMode']);
+
+      match /results/{resultId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn()
+          && isValidId(resultId)
+          && isValidTestResult(incoming())
+          && incoming().id == resultId
+          && existsAfter(/databases/$(database)/documents/reports/$(reportId));
+      }
+    }
+  }
+}
